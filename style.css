@@ -1,0 +1,53 @@
+:root {
+  --bg: #000;
+  --pink: #f6b7c9;
+  --white: #ffffff;
+}
+
+* { box-sizing: border-box; }
+html, body { height: 100%; margin: 0; background: var(--bg); font-family: "Segoe UI", system-ui, -apple-system, "Helvetica Neue", Arial; overflow: hidden; }
+
+#seedButton {
+  position: absolute;
+  top: 100px; /* start closer to center vertically */
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 18px;
+  color: var(--pink);
+  background: transparent;
+  border: 0;
+  cursor: pointer;
+  z-index: 10;
+  padding: 8px 14px;
+  border-radius: 20px;
+  animation: float 2s ease-in-out infinite alternate;
+  text-shadow: 0 0 6px rgba(246,183,201,0.25);
+}
+
+@keyframes float {
+  from { transform: translateX(-50%) translateY(0); }
+  to { transform: translateX(-50%) translateY(18px); }
+}
+
+canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+  position: fixed;
+  left: 0;
+  top: 0;
+  z-index: 1;
+  background: transparent;
+}
+#cmd-output {
+    color: lime;
+    background: black;
+    padding: 10px;
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: auto;
+    box-sizing: border-box;
+    white-space: pre; /* preserve spacing */
+    font-size: 25px;  /* <-- enlarged text */
+}
