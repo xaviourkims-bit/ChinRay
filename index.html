@@ -1,0 +1,249 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Special u to me</title>
+
+<style>
+html, body {
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+  background: #000;
+  font-family: monospace;
+  touch-action: manipulation;
+}
+
+canvas {
+  display: block;
+}
+
+#seedButton {
+  position: absolute;
+  left: 50%;
+  top: 35%;
+  transform: translate(-50%, -50%);
+  font-size: 22px;
+  color: #e3e2e9;
+  background: transparent;
+  border: 2px solid #fff;
+  border-radius: 20px;
+  padding: 10px 16px;
+  cursor: pointer;
+  z-index: 10;
+}
+
+#cmd-output {
+  position: absolute;
+  top: 0;
+  left: 0;
+  padding: 10px;
+  color: rgb(11, 138, 53);
+  background: black;
+  white-space: pre;
+  font-size: 20px;
+  max-width: 90vw;
+  z-index: 5;
+}
+
+@media (max-width: 600px) {
+  #seedButton {
+    top: 40%;
+    font-size: 18px;
+  }
+  #cmd-output {
+    font-size: 15px;
+  }
+}
+</style>
+</head>
+
+<body>
+<button id="seedButton">😁 yes u</button>
+<canvas id="canvas"></canvas>
+<div id="cmd-output"></div>
+
+<script>
+(() => {
+
+const canvas = document.getElementById("canvas");
+const ctx = canvas.getContext("2d");
+const seedBtn = document.getElementById("seedButton");
+const output = document.getElementById("cmd-output");
+
+function resize() {
+  canvas.width = window.innerWidth;
+  canvas.height = window.innerHeight;
+}
+resize();
+window.addEventListener("resize", resize);
+
+// Colors
+const treeColor = "#f6b7c9";
+const heartColors = ["#ff5c8a","#ff7f50","#ffc0cb","#ff69b4","#ffd700"];
+
+const blooms = [];
+let spawnCooldown = 2;
+
+// -------- TREE --------
+function segment(x,y,x2,y2,w,d){ return {x,y,x2,y2,w,d}; }
+
+function generateTree(x,y,len,angle,w,arr,d=0){
+  const x2 = x + Math.cos(angle)*len;
+  const y2 = y + Math.sin(angle)*len;
+  arr.push(segment(x,y,x2,y2,w,d));
+  if(len < 18) return;
+  generateTree(x2,y2,len*0.72,angle-0.5,w*0.7,arr,d+1);
+  generateTree(x2,y2,len*0.72,angle+0.5,w*0.7,arr,d+1);
+}
+
+function drawSegment(s){
+  ctx.strokeStyle = treeColor;
+  ctx.lineWidth = Math.max(s.w*Math.pow(0.85,s.d),1);
+  ctx.beginPath();
+  ctx.moveTo(s.x,s.y);
+  ctx.lineTo(s.x2,s.y2);
+  ctx.stroke();
+}
+
+function branchTips(segs){
+  return segs.filter(s=>!segs.some(o=>o.x===s.x2 && o.y===s.y2));
+}
+
+// -------- HEARTS --------
+function spawnBlooms(tips){
+  tips.forEach(t=>{
+    if(Math.random()<0.6){
+      blooms.push({
+        x:t.x2+(Math.random()-0.5)*20,
+        y:t.y2+(Math.random()-0.5)*20,
+        vy:0.6+Math.random(),
+        size:6+Math.random()*6,
+        rot:Math.random()*Math.PI*2,
+        flip:Math.random()>0.5,
+        col:heartColors[Math.floor(Math.random()*heartColors.length)]
+      });
+    }
+  });
+}
+
+function drawHeart(b){
+  ctx.save();
+  ctx.translate(b.x,b.y);
+  ctx.rotate(b.rot);
+  ctx.scale(1,b.flip?-1:1);
+  ctx.fillStyle = b.col;
+  ctx.shadowColor = b.col;
+  ctx.shadowBlur = 10;
+  ctx.beginPath();
+  ctx.moveTo(0,0);
+  ctx.bezierCurveTo(-b.size,-b.size,-b.size*2,b.size,0,b.size*2);
+  ctx.bezierCurveTo(b.size*2,b.size,b.size,-b.size,0,0);
+  ctx.fill();
+  ctx.restore();
+}
+
+function burst(x,y){
+  for(let i=0;i<10;i++){
+    blooms.push({
+      x:x+(Math.random()-0.5)*30,
+      y:y+(Math.random()-0.5)*30,
+      vy:0.6+Math.random()*1.2,
+      size:6+Math.random()*6,
+      rot:Math.random()*Math.PI*2,
+      flip:Math.random()>0.5,
+      col:heartColors[Math.floor(Math.random()*heartColors.length)]
+    });
+  }
+}
+
+canvas.addEventListener("pointerdown", e=>{
+  burst(e.clientX, e.clientY);
+});
+
+// -------- LOOP --------
+function bloomLoop(segs){
+  const tips = branchTips(segs);
+
+  function loop(){
+    ctx.clearRect(0,0,canvas.width,canvas.height);
+    segs.forEach(drawSegment);
+
+    spawnCooldown--;
+    if(spawnCooldown<=0){
+      spawnBlooms(tips);
+      spawnCooldown=3;
+    }
+
+    for(let i=blooms.length-1;i>=0;i--){
+      const b=blooms[i];
+      b.vy+=0.02;
+      b.y+=b.vy;
+      b.x+=(Math.random()-0.5)*1;
+      drawHeart(b);
+      if(b.y>canvas.height) blooms.splice(i,1);
+    }
+    requestAnimationFrame(loop);
+  }
+  loop();
+}
+
+// -------- GROW --------
+async function animateTree(segs){
+  for(let i=0;i<segs.length;i++){
+    await new Promise(res=>{
+      const start=performance.now();
+      function frame(t){
+        ctx.clearRect(0,0,canvas.width,canvas.height);
+        segs.slice(0,i).forEach(drawSegment);
+        drawSegment(segs[i]);
+        t-start<16?requestAnimationFrame(frame):res();
+      }
+      requestAnimationFrame(frame);
+    });
+  }
+  bloomLoop(segs);
+}
+
+// -------- TERMINAL --------
+const lines=[
+  "Do you like it?",
+  "How have u been silly 💞",
+  "May God bless you 🌿",
+  "You're pretty awesome 😁👌",
+  "May all ur dreams come true ✨",
+  "Stay happy and healthy! 🍀",
+  "With lots of love,",
+  "Someone who cares about you ❤️",
+  "✨P.S. You are special to me 😊",
+  "sending hugs 🤗Good vibes and a wink"
+];
+
+let li=0, ci=0, cursor=true;
+setInterval(()=>cursor=!cursor,500);
+
+function typeText(){
+  if(li>=lines.length) return;
+  output.textContent =
+    lines.slice(0,li).join("\n")+"\n"+
+    lines[li].slice(0,ci)+(cursor?"_":"");
+  ci++;
+  if(ci>lines[li].length){
+    li++; ci=0;
+    setTimeout(typeText,400);
+  } else setTimeout(typeText,50);
+}
+
+// -------- START --------
+seedBtn.onclick=()=>{
+  seedBtn.remove();
+  const segs=[];
+  generateTree(canvas.width/2, canvas.height-20, 100, -Math.PI/2, 10, segs);
+  animateTree(segs);
+  setTimeout(typeText,1200);
+};
+
+})();
+</script>
+</body>
+</html>
